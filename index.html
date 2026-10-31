@@ -1,0 +1,2170 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ゲノム・スライサー (GENOME SPLICER)</title>
+  <style>
+    :root {
+      --bg-color: #fef3c7;
+      --card-bg: #ffffff;
+      --accent-color: #0284c7;
+      --accent-green: #16a34a;
+      --accent-red: #dc2626;
+      --accent-yellow: #d97706;
+      --accent-purple: #9333ea;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 16px;
+    }
+
+    #game-container {
+      width: 100%;
+      max-width: 650px;
+      background-color: var(--card-bg);
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(217, 119, 6, 0.15);
+      border: 1px solid #fde047;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 14px 20px;
+      background-color: #fefce8;
+      border-bottom: 1px solid #fef08a;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 4px;
+    }
+
+    .title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--accent-color);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .difficulty-badge {
+      font-size: 0.8rem;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-weight: bold;
+      background: var(--accent-color);
+      color: #fff;
+    }
+
+    .stats {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+    }
+
+    .stat-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .stat-value {
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+
+    .btn-pause-header {
+      background: #fee2e2;
+      border: 1px solid #fca5a5;
+      color: #dc2626;
+      font-size: 0.85rem;
+      font-weight: bold;
+      padding: 5px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .btn-pause-header:hover {
+      background: #fca5a5;
+      color: #ffffff;
+      transform: translateY(-1px);
+    }
+
+    #canvas-wrapper {
+      position: relative;
+      width: 100%;
+      height: 480px;
+      background-color: #fefce8;
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    footer {
+      padding: 16px 20px;
+      border-top: 1px solid #fef08a;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background-color: #fefce8;
+    }
+
+    .legend {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      flex-wrap: wrap;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .badge {
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      color: #fff;
+    }
+
+    .bg-at { background: linear-gradient(90deg, #dc2626 50%, #2563eb 50%); }
+    .bg-cg { background: linear-gradient(90deg, #eab308 50%, #0f172a 50%); color: #fff; }
+
+    .action-panel {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .instruction {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      flex: 1;
+      min-height: 80px; /* 2行テキスト分の高さを常に確保し、ガタつきを防止 */
+      display: flex;
+      align-items: center;
+    }
+
+
+    .btn {
+      background: var(--accent-color);
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 0.95rem;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .btn:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn-ready {
+      background: var(--accent-green) !important;
+      color: #ffffff !important;
+      box-shadow: 0 0 15px rgba(22, 163, 74, 0.4);
+      animation: pulse 1.5s infinite;
+    }
+
+    .key-badge {
+      display: inline-block;
+      background: rgba(255, 255, 255, 0.3);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      margin-left: 4px;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.03); }
+      100% { transform: scale(1); }
+    }
+
+    .message-toast {
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-weight: bold;
+      font-size: 0.82rem;
+      display: none;
+      line-height: 1.3;
+    }
+
+    .toast-success { background: rgba(22, 163, 74, 0.12); color: var(--accent-green); border: 1px solid var(--accent-green); }
+    .toast-error { background: rgba(220, 38, 38, 0.12); color: var(--accent-red); border: 1px solid var(--accent-red); }
+
+    .overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(254, 252, 232, 0.96);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start; /* center から flex-start に変更 */
+      align-items: center;
+      gap: 12px;
+      z-index: 20;
+      padding: 12px 10px; 
+      text-align: center;
+      overflow-y: auto;
+    }
+
+    #pause-overlay {
+      background: rgba(254, 242, 242, 0.96);
+      justify-content: center; /* 上下中央揃えに指定 */
+    }
+
+    .pause-card {
+      background: #ffffff;
+      border: 2px solid #fca5a5;
+      border-radius: 16px;
+      padding: 16px 12px; /* パディングを絞って内側のスペースを確保 */
+      box-shadow: 0 10px 25px rgba(220, 38, 38, 0.12);
+      max-width: 420px;
+      width: 90%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      box-sizing: border-box;
+    }
+
+    .difficulty-select {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+    }
+
+    /* 一時停止画面のボタン同士の隙間を拡大 */
+    .pause-card .difficulty-select {
+      gap: 20px;  /* 8px から 16px へ拡大（お好みのpx数に調整可能） */
+    }
+
+    .btn-diff {
+      width: 100%; /* 固定幅を廃止し、親枠の100%に伸縮調整 */
+      max-width: 100%;
+      padding: 8px 14px;
+      font-size: 0.88rem;
+      font-weight: bold;
+      border-radius: 10px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      box-sizing: border-box; /* パディングを含めて100%幅に収める */
+    }
+
+    /* ポーズ画面内のボタンテキストを中央揃え＆100%幅に最適化 */
+    .pause-card .btn-diff {
+      align-items: center;
+      text-align: center;
+    }
+
+    .btn-diff .diff-title { font-size: 0.95rem; }
+    .btn-diff .diff-desc { font-size: 0.72rem; font-weight: normal; opacity: 0.9; }
+
+    .btn-easy { background: #dcfce7; color: #15803d; border-color: #86efac; }
+    .btn-medium { background: #e0f2fe; color: #0369a1; border-color: #7dd3fc; }
+    .btn-hard { background: #fef3c7; color: #b45309; border-color: #fde047; }
+    .btn-extra { background: #f3e8ff; color: #6b21a8; border-color: #d8b4fe; }
+    .btn-quit { background: #fee2e2; color: #dc2626; border-color: #fca5a5; text-align: center; }
+
+    .btn-diff:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .ranking-section {
+      background: #ffffff;
+      border: 1px solid #fef08a;
+      border-radius: 12px;
+      padding: 10px 14px;
+      width: 100%;
+      max-width: 340px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
+      margin-top: 4px;
+    }
+
+    .ranking-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .ranking-title {
+      font-size: 0.85rem;
+      font-weight: bold;
+      color: var(--accent-color);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .ranking-tabs {
+      display: flex;
+      gap: 4px;
+      justify-content: center;
+      margin-bottom: 8px;
+    }
+
+    .tab-btn {
+      padding: 3px 8px;
+      font-size: 0.72rem;
+      font-weight: bold;
+      border-radius: 6px;
+      border: 1px solid #cbd5e1;
+      background: #f8fafc;
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: all 0.15s ease;
+    }
+
+    .tab-btn.active {
+      background: var(--accent-color);
+      color: #ffffff;
+      border-color: var(--accent-color);
+    }
+
+    .ranking-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .ranking-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 5px 8px;
+      background: #fefce8;
+      border-radius: 6px;
+      font-size: 0.8rem;
+    }
+
+    .rank-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .rank-badge {
+      font-weight: 800;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+    }
+
+    .rank-1 { background: #fef08a; color: #854d0e; border: 1px solid #eab308; }
+    .rank-2 { background: #e2e8f0; color: #475569; border: 1px solid #cbd5e1; }
+    .rank-3 { background: #ffedd5; color: #9a3412; border: 1px solid #fdba74; }
+
+    .rank-score { font-weight: bold; color: var(--text-main); }
+    .rank-meta { font-size: 0.7rem; color: var(--text-muted); }
+
+    .rank-in-banner {
+      background: linear-gradient(135deg, #fef08a 0%, #fde047 100%);
+      color: #854d0e;
+      border: 2px solid #eab308;
+      padding: 8px 16px;
+      border-radius: 10px;
+      font-weight: 800;
+      font-size: 0.95rem;
+      animation: pulse 1.5s infinite;
+      margin: 8px 0;
+    }
+
+    /* Tipsボタンのスタイル */
+    .btn-tips {
+      width: 100%;
+      max-width: 340px;
+      margin-top: 8px;
+      padding: 8px 14px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      color: var(--accent-color);
+      background: #e0f2fe;
+      border: 1.5px solid #7dd3fc;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-tips:hover {
+      background: #bae6fd;
+      transform: translateY(-1px);
+    }
+
+    /* Tipsモーダルのスタイル */
+    .tips-card {
+      background: #ffffff;
+      border: 2px solid #7dd3fc;
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: 0 10px 25px rgba(2, 132, 199, 0.15);
+      max-width: 480px;
+      width: 92%;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-height: 96%; /* 上下が見切れないよう枠内に収める */
+      box-sizing: border-box;
+      text-align: left;
+      cursor: auto;
+    }
+
+    .tips-card, .tips-card * {
+      user-select: text !important;
+      -webkit-user-select: text !important;
+      cursor: text;
+    }
+    .tips-card summary, .tips-card button {
+      user-select: none !important;
+      -webkit-user-select: none !important;
+      cursor: pointer;
+    }
+
+
+    .tips-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #f1f5f9;
+      padding-bottom: 8px;
+    }
+
+    .tips-title {
+      font-size: 1.05rem;
+      color: var(--accent-color);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .tips-close-btn {
+      background: transparent;
+      border: none;
+      font-size: 1.2rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .tips-close-btn:hover {
+      background: #f1f5f9;
+      color: var(--accent-red);
+    }
+
+    .tips-content {
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding-right: 4px;
+      font-size: 0.85rem;
+      line-height: 1.6;
+      color: var(--text-main);
+      user-select: text;
+      -webkit-user-select: text;
+      cursor: text;
+    }
+
+    .tips-section {
+      background: #f8fafc;
+      padding: 12px;
+      border-radius: 10px;
+      border-left: 4px solid var(--accent-color);
+    }
+
+    .tips-section h3 {
+      font-size: 0.92rem;
+      color: var(--accent-color);
+      margin-bottom: 6px;
+    }
+
+    .tips-section summary h3 {
+      user-select: text !important;
+      -webkit-user-select: text !important;
+      cursor: text;
+    }
+
+    /* Tipsボタンのスタイル */
+
+    /* アコーディオン（details）の全体枠 */
+    details.tips-section {
+      background: #f8fafc;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border-left: 4px solid var(--accent-color);
+      transition: all 0.2s ease;
+      margin-bottom: 10px;
+    }
+    
+    /* 開いている状態の背景色 */
+    details[open].tips-section {
+      background: #f1f5f9;
+    }
+    
+    /* 見出し（summary）のクリックエリア設定 */
+    details.tips-section summary {
+      cursor: pointer;
+      list-style: none; /* ブラウザ標準の三角アイコンを非表示 */
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none;
+    }
+
+    details.tips-section summary::-webkit-details-marker {
+      display: none; /* Safari/Chrome用デフォルト矢印削除 */
+    }
+    
+    /* 見出しの右側に表示する矢印アイコン（▼） */
+    details.tips-section summary::after {
+      content: '▼';
+      font-size: 0.75rem;
+      color: var(--accent-color);
+      transition: transform 0.2s ease;
+      margin-left: 8px;
+    }
+    
+    /* 開いたときに矢印を180度回転（▲） */
+    details[open].tips-section summary::after {
+      transform: rotate(180deg);
+    }
+    
+    details.tips-section h3 {
+      font-size: 0.92rem;
+      color: var(--accent-color);
+      margin: 0;
+    }
+    
+    /* 開いたときの中身の区切り線と余白 */
+    .tips-body {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed #cbd5e1;
+    }
+
+    .tips-body b {
+      display: inline-block;
+    }
+
+    rt {
+      font-size: 0.75em; 
+      font-weight: bold;
+    }
+
+    /* アコーディオン（details）の全体枠 */
+
+    .btn-reset-scores {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.7rem;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
+    .btn-reset-scores:hover { color: var(--accent-red); }
+
+    .btn-mini-yes {
+      background: var(--accent-red);
+      color: white;
+      border: none;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      cursor: pointer;
+    }
+
+    .btn-mini-no {
+      background: var(--text-muted);
+      color: white;
+      border: none;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      cursor: pointer;
+    }
+
+    .pause-dialog {
+      background: #ffffff;
+      border: 2px solid #fca5a5;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      max-width: 420px;
+      width: 90%;
+    }
+
+    #countdown-overlay {
+      background: rgba(254, 252, 232, 0.75);
+      backdrop-filter: blur(2px);
+      justify-content: center; /* 画面の上下中央に配置 */
+    }
+
+    .countdown-number {
+      font-size: 5rem;
+      font-weight: 900;
+      color: var(--accent-color);
+      text-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+      animation: countPop 0.8s ease-out;
+    }
+
+    .countdown-text {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: var(--text-main);
+    }
+
+    @keyframes countPop {
+      0% { transform: scale(0.5); opacity: 0; }
+      50% { transform: scale(1.2); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    /* スマホ画面（幅640px未満）でのみ改行を有効化 */
+    .mobile-br {
+      display: inline;
+    }
+
+    .mobile-shift {
+      display: inline-block;
+      margin-left: 22px; /* ★ここを移動させたい好きなpx数に変更 */
+    }
+    
+    @media (min-width: 640px) {
+      .mobile-br {
+        display: none;
+      }
+
+      .mobile-shift {
+        display: inline;
+        margin-left: 0; /* PC版では横移動をリセット */
+      }
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<div id="game-container">
+  <header>
+    <div class="header-top">
+      <div class="title">ゲノム・スライサー</div>
+      <div class="stats">
+        <div class="stat-item">
+          <span class="stat-label">TIME</span>
+          <span id="timer" class="stat-value" style="color: var(--accent-yellow);">60.0s</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">進捗</span>
+          <span id="genome-count" class="stat-value" style="color: var(--accent-color);">1 / 10</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">スコア</span>
+          <span id="score" class="stat-value">0</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="header-bottom-row" class="header-bottom hidden">
+      <span id="diff-tag" class="difficulty-badge">初級</span>
+      <button id="pause-btn" class="btn-pause-header" onclick="pauseGame()">⏸️ 一時停止</button>
+    </div>
+  </header>
+
+  <div id="canvas-wrapper">
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- スタート画面 -->
+    <div id="start-overlay" class="overlay">
+      <h2 style="color: var(--accent-color);">🧬 GENOME SLICER</h2>
+      <p>ミスマッチを起こしている<b>「変異塩基」</b>をみつけてスライスし、正しいDNA二重らせんに修復しよう！</p>
+      
+      <div class="difficulty-select">
+        <button class="btn-diff btn-easy" onclick="startGameWithDiff('easy')">
+          <span class="diff-title">🌱 初級 (Aのミスマッチ)</span>
+          <span class="diff-desc">変異塩基に⚠️マーク表示。対象を切り離して修復。</span>
+        </button>
+        <button class="btn-diff btn-medium" onclick="startGameWithDiff('medium')">
+          <span class="diff-title">⚡ 中級 (多様なミスマッチ)</span>
+          <span class="diff-desc">様々なミスマッチが出現。⚠️マークを頼りに修復。</span>
+        </button>
+        <button class="btn-diff btn-hard" onclick="startGameWithDiff('hard')">
+          <span class="diff-title">🔥 上級 (娘鎖 修復)</span>
+          <span class="diff-desc">⚠️マーク非表示！<br>[CH₃親鎖]を基準に[娘鎖]側の変異を切断。</span>
+        </button>
+        <button class="btn-diff btn-extra" onclick="startGameWithDiff('extra')">
+          <span class="diff-title">✨ エクストラ (特殊変異)</span>
+          <span class="diff-desc">⚠️マーク非表示！<br>[CH₃親鎖]を基準に多様な変異を切断・修復。</span>
+        </button>
+      </div>
+
+      <div class="ranking-section">
+        <div class="ranking-header">
+          <div class="ranking-title">🏆 ベストスコア TOP 3</div>
+          <div id="reset-confirm-box" class="hidden" style="display: flex; gap: 4px; align-items: center; font-size: 0.7rem;">
+            <span>削除？</span>
+            <button class="btn-mini-yes" onclick="executeResetScores()">はい</button>
+            <button class="btn-mini-no" onclick="cancelResetScores()">いいえ</button>
+          </div>
+          <button id="reset-trigger-btn" class="btn-reset-scores" onclick="promptResetScores()">リセット</button>
+        </div>
+        <div class="ranking-tabs">
+          <button id="tab-easy" class="tab-btn active" onclick="switchRankingTab('easy')">🌱 初級</button>
+          <button id="tab-medium" class="tab-btn" onclick="switchRankingTab('medium')">⚡ 中級</button>
+          <button id="tab-hard" class="tab-btn" onclick="switchRankingTab('hard')">🔥 上級</button>
+          <button id="tab-extra" class="tab-btn" onclick="switchRankingTab('extra')">✨ EX</button>
+        </div>
+        <div id="ranking-list" class="ranking-list"></div>
+      </div>
+      <button class="btn-tips" onclick="openTipsModal()">💡 背景知識・Tips</button>
+    </div>
+
+    <!-- ポーズモーダル -->
+    <div id="pause-overlay" class="overlay hidden">
+      <div id="pause-main-menu" class="pause-card">
+        <h2 style="color: var(--accent-color);">⏸️ 一時停止中</h2>
+        <div class="difficulty-select">
+          <button class="btn-diff btn-medium" style="text-align:center;" onclick="resumeGame()">▶️ 続ける</button>
+          <button class="btn-diff btn-hard" style="text-align:center;" onclick="showConfirm('restart')">🔄 最初からやり直し</button>
+          <button class="btn-diff btn-quit" style="text-align:center;" onclick="showConfirm('quit')">🚪 中断する (タイトルへ)</button>
+        </div>
+      </div>
+
+      <div id="pause-confirm-dialog" class="pause-dialog hidden">
+        <h3 id="confirm-title" style="font-size: 1.25rem; color: var(--accent-red); margin-bottom: 12px;">⚠️ 注意</h3>
+        <p id="confirm-message" style="color: var(--text-main); font-size: 0.95rem; margin-bottom: 20px; line-height: 1.5;"></p>
+        <div style="display: flex; gap: 12px; justify-content: center;">
+          <button id="confirm-yes-btn" class="btn" style="background: var(--accent-red); min-width: 100px;" onclick="handleConfirmYes()">はい</button>
+          <button id="confirm-no-btn" class="btn" style="background: var(--text-muted); min-width: 100px;" onclick="hideConfirm()">いいえ</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- カウントダウン -->
+    <div id="countdown-overlay" class="overlay hidden">
+      <div class="countdown-text" id="countdown-label">修復準備中...</div>
+      <div class="countdown-number" id="countdown-num">3</div>
+    </div>
+
+    <!-- リザルト -->
+    <div id="result-overlay" class="overlay hidden">
+      <h2 id="result-title" style="color: var(--accent-green);">GAME CLEAR!</h2>
+      <div id="result-detail" style="display: flex; flex-direction: column; align-items: center; gap: 4px;"></div>
+      <button id="restart-btn" class="btn" style="margin-top: 10px;">タイトルに戻る</button>
+    </div>
+
+    <!-- 🟢 Tips モーダル（フォーマット） -->
+    <div id="tips-overlay" class="overlay hidden" style="justify-content: flex-start;">
+      <div class="tips-card">
+        <div class="tips-header">
+          <div class="tips-title">💡 DNA修復とゲームの背景</div>
+          <button class="tips-close-btn" onclick="closeTipsModal()">✕</button>
+        </div>
+
+        <div class="tips-content">
+          <details class="tips-section" open>
+            <summary>
+              <h3>🧬 1. DNAの基礎：二重らせんと4つの文字</h3>
+            </summary>
+            <div class="tips-body">
+              <p>
+                DNAはすべての生き物の「設計図」で、2本の鎖がねじれ合った<b>二重らせん構造</b>をしています。<br><br>
+                • <b>4つの塩基：</b> DNAの文字は <b>A（アデニン）</b>・<b>T（チミン）</b>・<b>C（シトシン）</b>・<b>G（グアニン）</b> の4種類だけです。<br><br>
+                • <b>塩基の大きさとペア：</b> 大きいパーツの<b>「プリン塩基（A, G）」</b>と、小さいパーツの<b>「ピリミジン塩基（C, T）」</b>が必ず組になります。そのため、DNAの幅はいつも一定に保たれます。<br>
+                （『プリン<ruby>味<rt>A, G</rt></ruby>の、ピリ辛<ruby>シチュー<rt>C, T</rt></ruby>』と覚えよう！）<br><br>
+                • <b>DNAの複製（コピー）：</b> 細胞が分裂して増えるとき、2本の鎖がほどけてそれぞれの鎖をお手本にし、そっくり同じDNAを「<b>複製（コピー）</b>」して新しい細胞に引き継ぎます。<br><br>
+                • <b>水素結合：</b> 塩基どうしは電気の引き合いで結ばれています。<b>「プラスの電気がむき出しになった水素（H）」</b>と、<b>「マイナスの電気をもつ酸素（O）や窒素（N）」</b>が、まるで<b>磁石のようにピタッと引き合って</b>ペアを作ります。<br><br>
+                ・<b>A - T ペア：</b> 2本の手（水素結合）で結合<br>
+                ・<b>C - G ペア：</b> 3本の手（水素結合）でより強く結合<br>
+                （『<ruby>圧倒<rt>A-T</rt></ruby>的<ruby>に<rt>2</rt></ruby>驚く<ruby>3<rt>3</rt></ruby>D<ruby>CG<rt>C-G</rt></ruby>』と覚えよう！）
+              </p>
+            </div>
+          </details>
+          
+          <!-- コーナー2: DNAの変異 -->
+          <details class="tips-section">
+            <summary>
+              <h3>⚠️ 2. DNAの変異：毎日起きている設計図のキズ</h3>
+            </summary>
+            <div class="tips-body">
+              <p>
+                私たちの細胞では、紫外線や食事、呼吸で取り込んだ酸素などの影響で、1日に数万回もDNAの傷（変異）が発生しています。<br><br>
+                • <b>ミスマッチ変異：</b> DNAの複製に失敗し A-C や G-T などの間違った組み合わせになった状態。<br><br>
+                • <b>ウラシル変異（U）：</b> 本来はRNA（DNAの一部分を必要に応じてコピーした設計図）に使われる塩基。C（シトシン）が部分的に傷ついてU（ウラシル）になってしまった状態。UはT（チミン）と非常に似ているために、DNAを複製するときUの相方はA（アデニン）となってしまう。最初はC-Gだったのに変異をそのまま放置していると、やがてU-Aとなり、DNAが書き換わってしまうのだ。<br><br>
+                • <b>酸化塩基損傷（8-OHdG）：</b> 呼吸で取り込んだ酸素の一部が凶暴な「活性酸素」によってG（グアニン）がサビついてしまった状態。<br><br>
+                • <b>メチル化損傷（3-MeA / 7-MeG / O⁶-MeGなど）：</b> 化学物質などによりA（アデニン）やG（グアニン）にメチル基（-CH3）という余計な塊が勝手にくっついた状態。メチル基がくっついていると、設計図が正しく読めない状態になってしまう。数字はメチル基のくっついた位置を表す。<br><br>
+                • <b>ピリミジン二量体（D）：</b> 太陽からの紫外線によって隣り合うピリミジン塩基（C、T）同士が固く合体してしまった状態。これもまた設計図が正しく読めなくなる。<br><br>
+                • <b>脱塩基 / APサイト（∅）：</b> 傷ついた塩基がポロッと取れてしまった状態。
+              </p>
+            </div>
+          </details>
+          
+          <!-- コーナー3: DNAの修復 -->
+          <details class="tips-section">
+            <summary>
+              <h3>✂️ 3. DNAの修復：細胞内のレスキュー隊</h3>
+            </summary>
+            <div class="tips-body">
+              <p>
+                傷ついたDNAをそのままにするとガンなどの病気の原因になります。そのため、細胞の中では修復酵素が24時間体制で修理を行っています。<br><br>
+                <b>① 見つけて切る：</b><br>
+                ハサミの役割をする酵素（<b>ヌクレアーゼ</b>）が、変異のある塩基を切断して取り除きます。<br><br>
+                <b>② 正しいパーツで埋める：</b><br>
+                目印であるメチル基（<b>-CH₃</b>）がついた正しい方の鎖（<b>親鎖</b>）をお手本にして、パズル職人（<b>DNAポリメラーゼ</b>）が新しい塩基をはめ込みます。<br><br>
+                <b>③ のりでピッタリつなぐ：</b><br>
+                最後にのりの役割をする酵素（<b>DNAリガーゼ</b>）が、新しく埋めたパーツと元の骨格をしっかり結合させて修復完了です！
+              </p>
+            </div>
+          </details>
+        </div>
+
+        <button class="btn" style="width: 100%; margin-top: 4px;" onclick="closeTipsModal()">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="legend" id="game-legend"></div>
+
+    <div class="action-panel">
+      <div class="instruction">
+        <div id="instruction-text">ミスマッチペアを<span style="display: inline-block;">スライス</span>か<span style="display: inline-block;">タップ</span>して修復してください。<br><span style="font-size: 0.75rem; color: #94a3b8;">※ [Space] キーまたは [Enter] キーでも修復完了を進められます</span></div>
+        <div id="toast" class="message-toast"></div>
+      </div>
+      <button id="next-btn" class="btn hidden">修復完了 <span class="key-badge">Space</span></button>
+    </div>
+  </footer>
+</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const toast = document.getElementById('toast');
+const instructionText = document.getElementById('instruction-text');
+
+const genomeCountEl = document.getElementById('genome-count');
+const scoreEl = document.getElementById('score');
+const timerEl = document.getElementById('timer');
+const nextBtn = document.getElementById('next-btn');
+const diffTag = document.getElementById('diff-tag');
+const headerBottomRow = document.getElementById('header-bottom-row');
+
+const startOverlay = document.getElementById('start-overlay');
+const pauseOverlay = document.getElementById('pause-overlay');
+const pauseMainMenu = document.getElementById('pause-main-menu');
+const pauseConfirmDialog = document.getElementById('pause-confirm-dialog');
+const confirmTitle = document.getElementById('confirm-title');
+const confirmMessage = document.getElementById('confirm-message');
+
+const countdownOverlay = document.getElementById('countdown-overlay');
+const countdownNum = document.getElementById('countdown-num');
+const countdownLabel = document.getElementById('countdown-label');
+
+const resultOverlay = document.getElementById('result-overlay');
+const resultTitle = document.getElementById('result-title');
+const resultDetail = document.getElementById('result-detail');
+const restartBtn = document.getElementById('restart-btn');
+
+const rankingListEl = document.getElementById('ranking-list');
+const resetConfirmBox = document.getElementById('reset-confirm-box');
+const resetTriggerBtn = document.getElementById('reset-trigger-btn');
+const gameLegend = document.getElementById('game-legend');
+
+const TOTAL_GENOMES = 10;
+const LIMIT_TIME = 60.0;
+const HIGH_SCORE_STORAGE_KEY = 'genome_slicer_high_scores_v2';
+
+let currentDifficulty = 'easy';
+let selectedRankingTab = 'easy';
+let currentGenomeIndex = 1;
+let score = 0;
+let timeLeft = LIMIT_TIME;
+let timerInterval = null;
+let countdownInterval = null;
+let isGameOver = true;
+let isPaused = false;
+let isCountingDown = false;
+let pendingConfirmAction = null;
+
+let currentNodes = [];
+let parentStrandSide = 'left';
+let swipePath = [];
+let isSwiping = false;
+let penalizedNodesThisSwipe = new Set();
+let highlightUncut = false;
+let toastTimeout = null;
+
+const BASE_COLORS = {
+  'A': '#dc2626',
+  'T': '#2563eb',
+  'C': '#eab308',
+  'G': '#0f172a',
+  'U': '#9333ea',
+  '8-OHdG': '#ea580c',
+  'D': '#07dbc5',
+  'AP': '#ffffff',
+  '7-MeG': '#a855f7', 
+  '3-MeA': '#be185d', 
+  'O6-MeG': '#4c1d95' 
+};
+
+const BASE_TEXT_COLORS = {
+  'A': '#ffffff',
+  'T': '#ffffff',
+  'C': '#000000',
+  'G': '#ffffff',
+  'U': '#ffffff',
+  '8-OHdG': '#ffffff',
+  'D': '#ffffff',
+  '7-MeG': '#ffffff',
+  '3-MeA': '#ffffff',
+  'O6-MeG': '#ffffff'
+};
+
+const COMPLEMENT = {
+  'A': 'T',
+  'T': 'A',
+  'C': 'G',
+  'G': 'C',
+  'U': 'A',
+  '8-OHdG': 'C',
+  'D': 'T',
+  '7-MeG': 'C',  
+  '3-MeA': 'T', 
+  'O6-MeG': 'C' 
+};
+
+const MUTATION_GENERATORS = {
+  easyAInCG: () => {
+    const isLeftC = Math.random() < 0.5;
+    const mutatedSide = Math.random() < 0.5 ? 'left' : 'right';
+    let leftBase = isLeftC ? 'C' : 'G';
+    let rightBase = isLeftC ? 'G' : 'C';
+    if (mutatedSide === 'left') leftBase = 'A';
+    else rightBase = 'A';
+    return { leftBase, rightBase, mutatedSide };
+  },
+  randomATCGMismatch: () => {
+    const bases = ['A', 'T', 'C', 'G'];
+    const b1 = bases[Math.floor(Math.random() * bases.length)];
+    const complement = COMPLEMENT[b1];
+    const wrongBases = bases.filter(b => b !== complement);
+    const b2 = wrongBases[Math.floor(Math.random() * wrongBases.length)];
+    const mutatedSide = Math.random() < 0.5 ? 'left' : 'right';
+    return {
+      leftBase: mutatedSide === 'left' ? b2 : b1,
+      rightBase: mutatedSide === 'right' ? b2 : b1,
+      mutatedSide
+    };
+  },
+  deaminationUracil: (daughterSide) => {
+    const parentBase = 'G';
+    const daughterBase = 'U';
+    return {
+      leftBase: daughterSide === 'left' ? daughterBase : parentBase,
+      rightBase: daughterSide === 'right' ? daughterBase : parentBase,
+      mutatedSide: daughterSide
+    };
+  },
+  oxoG: (daughterSide) => {
+    const parentBase = 'C';
+    const daughterBase = '8-OHdG';
+    return {
+      leftBase: daughterSide === 'left' ? daughterBase : parentBase,
+      rightBase: daughterSide === 'right' ? daughterBase : parentBase,
+      mutatedSide: daughterSide
+    };
+  },
+  pyrimidineDimer: (daughterSide) => {
+    // 紫外線照射によるピリミジンダイマー (親鎖がAなら修復後T / 親鎖がGなら修復後C)
+    const parentBase = (Math.random() < 0.5) ? 'A' : 'G';
+    const daughterBase = 'D';
+    return {
+      leftBase: daughterSide === 'left' ? daughterBase : parentBase,
+      rightBase: daughterSide === 'right' ? daughterBase : parentBase,
+      mutatedSide: daughterSide
+    };
+  },
+  apSite: (daughterSide) => {
+    const bases = ['A', 'T', 'C', 'G'];
+    const parentBase = bases[Math.floor(Math.random() * bases.length)];
+    const daughterBase = 'AP';
+    return {
+      leftBase: daughterSide === 'left' ? daughterBase : parentBase,
+      rightBase: daughterSide === 'right' ? daughterBase : parentBase,
+      mutatedSide: daughterSide
+    };
+  },
+
+  methylatedG7: (daughterSide) => {
+    return {
+      leftBase: daughterSide === 'left' ? '7-MeG' : 'C',
+      rightBase: daughterSide === 'right' ? '7-MeG' : 'C',
+      mutatedSide: daughterSide
+    };
+  },
+  methylatedA3: (daughterSide) => {
+    return {
+      leftBase: daughterSide === 'left' ? '3-MeA' : 'T',
+      rightBase: daughterSide === 'right' ? '3-MeA' : 'T',
+      mutatedSide: daughterSide
+    };
+  },
+  methylatedO6G: (daughterSide) => {
+    return {
+      leftBase: daughterSide === 'left' ? 'O6-MeG' : 'C',
+      rightBase: daughterSide === 'right' ? 'O6-MeG' : 'C',
+      mutatedSide: daughterSide
+    };
+  }
+
+};
+
+function resizeCanvas() {
+  const wrapper = document.getElementById('canvas-wrapper');
+  if (wrapper) {
+    canvas.width = wrapper.clientWidth;
+    canvas.height = wrapper.clientHeight;
+  }
+  if (!isGameOver && currentNodes.length > 0) {
+    render();
+  }
+}
+window.addEventListener('resize', resizeCanvas);
+
+function getHighScores() {
+  try {
+    const raw = localStorage.getItem(HIGH_SCORE_STORAGE_KEY);
+    if (!raw) return { easy: [], medium: [], hard: [], extra: [] };
+    const parsed = JSON.parse(raw);
+    return {
+      easy: parsed.easy || [],
+      medium: parsed.medium || [],
+      hard: parsed.hard || [],
+      extra: parsed.extra || []
+    };
+  } catch (e) {
+    return { easy: [], medium: [], hard: [], extra: [] };
+  }
+}
+
+function saveHighScores(scoresObj) {
+  try {
+    localStorage.setItem(HIGH_SCORE_STORAGE_KEY, JSON.stringify(scoresObj));
+  } catch (e) {
+    console.error('Failed to save scores to localStorage', e);
+  }
+}
+
+function recordScoreIfTop3(diff, newScore, remainingTime) {
+  const allScores = getHighScores();
+  const list = allScores[diff] || [];
+  
+  const today = new Date();
+  const dateStr = `${today.getMonth() + 1}/${today.getDate()}`;
+  
+  const newEntry = {
+    score: newScore,
+    timeLeft: remainingTime,
+    date: dateStr
+  };
+
+  list.push(newEntry);
+  list.sort((a, b) => b.score - a.score || b.timeLeft - a.timeLeft);
+  
+  const isRanked = list.findIndex(item => item === newEntry) < 3;
+  allScores[diff] = list.slice(0, 3);
+  saveHighScores(allScores);
+
+  const rankIndex = allScores[diff].indexOf(newEntry);
+  return { isRankIn: isRanked && rankIndex >= 0, rankIndex };
+}
+
+function switchRankingTab(diff) {
+  selectedRankingTab = diff;
+  ['easy', 'medium', 'hard', 'extra'].forEach(d => {
+    const btn = document.getElementById(`tab-${d}`);
+    if (btn) {
+      if (d === diff) btn.classList.add('active');
+      else btn.classList.remove('active');
+    }
+  });
+  renderRankingList();
+}
+
+function renderRankingList() {
+  const allScores = getHighScores();
+  const list = allScores[selectedRankingTab] || [];
+  
+  if (list.length === 0) {
+    rankingListEl.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 0.75rem; padding: 8px 0;">まだ記録はありません</div>`;
+    return;
+  }
+
+  const rankBadges = ['🥇', '🥈', '🥉'];
+  const rankClasses = ['rank-1', 'rank-2', 'rank-3'];
+
+  rankingListEl.innerHTML = list.map((item, idx) => `
+    <div class="ranking-item">
+      <div class="rank-left">
+        <span class="rank-badge ${rankClasses[idx]}">${rankBadges[idx]}</span>
+        <span class="rank-score">${item.score} pt</span>
+      </div>
+      <div class="rank-meta">残り ${item.timeLeft.toFixed(1)}s (${item.date})</div>
+    </div>
+  `).join('');
+}
+
+// Tipsモーダルの開閉関数
+function openTipsModal() {
+  document.getElementById('tips-overlay').classList.remove('hidden');
+}
+function closeTipsModal() {
+  document.getElementById('tips-overlay').classList.add('hidden');
+}
+
+
+function promptResetScores() {
+  resetConfirmBox.classList.remove('hidden');
+  resetTriggerBtn.classList.add('hidden');
+}
+
+function cancelResetScores() {
+  resetConfirmBox.classList.add('hidden');
+  resetTriggerBtn.classList.remove('hidden');
+}
+
+function executeResetScores() {
+  localStorage.removeItem(HIGH_SCORE_STORAGE_KEY);
+  cancelResetScores();
+  renderRankingList();
+}
+
+function updateLegend(diff) {
+  if (diff === 'extra') {
+    gameLegend.innerHTML = `
+      <div class="legend-item"><span class="badge bg-at">二本の水素結合</span> A(赤)-T(青)</div>
+      <div class="legend-item"><span class="badge bg-cg">三本の水素結合</span> C(黄)-G(黒)</div>
+      <div class="legend-item"><span class="badge" style="background: var(--accent-purple);">ウラシル変異</span> U(紫)</div>
+      <div class="legend-item"><span class="badge" style="background: #ea580c;">酸化損傷</span>8-OHdG(橙)</div>
+      <div class="legend-item"><span class="badge" style="background: linear-gradient(90deg, #be185d 33.3%, #a855f7 33.3% 66.6%, #4c1d95 66.6%">メチル化損傷</span>3-MeA / 7-MeG / O6-MeG</div>
+      <div class="legend-item"><span class="badge" style="background: #07dbc5;">ピリミジン二量体</span>D(青緑)</div>
+      <div class="legend-item"><span class="badge" style="background: #ffffff; color: #000000; border: 0.5px solid #000000;">脱塩基(AP)</span>∅(白)</div>
+      <div class="legend-item"><span class="badge" style="background: #b45309;">CH₃</span> 親鎖(正しい塩基) / 娘鎖側の変異を切断</div>
+    `;
+  } else if (diff === 'hard') {
+    gameLegend.innerHTML = `
+      <div class="legend-item"><span class="badge bg-at">二本の水素結合</span> A(赤)-T(青)</div>
+      <div class="legend-item"><span class="badge bg-cg">三本の水素結合</span> C(黄)-G(黒)</div>
+      <div class="legend-item"><span class="badge" style="background: var(--accent-purple);">ウラシル変異</span> U(紫)</div>
+      <div class="legend-item"><span class="badge" style="background: #b45309;">CH₃</span> 親鎖(正しい塩基) / 娘鎖側の変異を切断</div>
+    `;
+  } else {
+    gameLegend.innerHTML = `
+      <div class="legend-item"><span class="badge bg-at">二本の水素結合</span> A(赤)-T(青)</div>
+      <div class="legend-item"><span class="badge bg-cg">三本の水素結合</span> C(黄)-G(黒)</div>
+      <div class="legend-item"><span style="color: var(--accent-red); font-weight: bold;">⚠️ 発光</span> 変異塩基 (切断対象)</div>
+    `;
+  }
+}
+
+function startGameWithDiff(diff) {
+  currentDifficulty = diff;
+  switchRankingTab(diff);
+  updateLegend(diff);
+  if (diff === 'easy') {
+    diffTag.textContent = '初級';
+    diffTag.style.background = '#16a34a';
+  } else if (diff === 'medium') {
+    diffTag.textContent = '中級';
+    diffTag.style.background = '#0284c7';
+  } else if (diff === 'hard') {
+    diffTag.textContent = '上級';
+    diffTag.style.background = '#d97706';
+  } else if (diff === 'extra') {
+    diffTag.textContent = 'エクストラ';
+    diffTag.style.background = '#9333ea';
+  }
+  initGameWithCountdown();
+}
+
+function initGameWithCountdown() {
+  currentGenomeIndex = 1;
+  score = 0;
+  timeLeft = LIMIT_TIME;
+  isGameOver = false;
+  isPaused = false;
+  highlightUncut = false;
+
+  genomeCountEl.textContent = `${currentGenomeIndex} / ${TOTAL_GENOMES}`;
+  scoreEl.textContent = score;
+  updateTimerDisplay();
+
+  startOverlay.classList.add('hidden');
+  pauseOverlay.classList.add('hidden');
+  resultOverlay.classList.add('hidden');
+
+  updateUIVisibility(true, false);
+
+  resizeCanvas();
+  generateGenome();
+  updateNextButtonState();
+  render();
+
+  startCountdown(() => {
+    startTimer();
+  }, false);
+}
+
+function updateTimerDisplay() {
+  timerEl.textContent = `${timeLeft.toFixed(1)}s`;
+}
+
+function startTimer() {
+  stopTimer();
+  timerInterval = setInterval(() => {
+    if (isPaused || isGameOver || isCountingDown) return;
+    timeLeft -= 0.1;
+    if (timeLeft <= 0) {
+      timeLeft = 0;
+      updateTimerDisplay();
+      endGame(false);
+    } else {
+      updateTimerDisplay();
+    }
+  }, 100);
+}
+
+function stopTimer() {
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = null;
+}
+
+function startCountdown(callback, isResume = false) {
+  stopCountdown();
+  isCountingDown = true;
+  countdownOverlay.classList.remove('hidden');
+  countdownLabel.textContent = isResume ? "再開準備中..." : "修復準備中...";
+  
+  let count = 3;
+  countdownNum.textContent = count;
+  
+  countdownInterval = setInterval(() => {
+    count--;
+    if (count > 0) {
+      countdownNum.textContent = count;
+    } else {
+      stopCountdown();
+      countdownOverlay.classList.add('hidden');
+      isCountingDown = false;
+      if (callback) callback();
+    }
+  }, 800);
+}
+
+function stopCountdown() {
+  if (countdownInterval) clearInterval(countdownInterval);
+  countdownInterval = null;
+}
+
+function pauseGame() {
+  if (isGameOver || isPaused) return;
+  isPaused = true;
+  stopTimer();
+  stopCountdown();
+  countdownOverlay.classList.add('hidden');
+  isCountingDown = false;
+  
+  pauseOverlay.classList.remove('hidden');
+  pauseMainMenu.classList.remove('hidden');
+  pauseConfirmDialog.classList.add('hidden');
+  updateUIVisibility(true, true);
+}
+
+function resumeGame() {
+  if (isGameOver || !isPaused) return;
+  isPaused = false;
+  pauseOverlay.classList.add('hidden');
+  updateUIVisibility(true, false);
+  
+  startCountdown(() => {
+    startTimer();
+  }, true);
+}
+
+function showConfirm(action) {
+  pendingConfirmAction = action;
+  pauseMainMenu.classList.add('hidden');
+  pauseConfirmDialog.classList.remove('hidden');
+  
+  if (action === 'restart') {
+    confirmTitle.textContent = "🔄 最初からやり直し";
+    confirmMessage.textContent = "現在のスコアと進行状況がリセットされます。最初からやり直しますか？";
+  } else if (action === 'quit') {
+    confirmTitle.textContent = "🚪 タイトルへ戻る";
+    confirmMessage.textContent = "ゲームを中断してタイトル画面に戻りますか？";
+  }
+}
+
+function hideConfirm() {
+  pendingConfirmAction = null;
+  pauseConfirmDialog.classList.add('hidden');
+  pauseMainMenu.classList.remove('hidden');
+}
+
+function handleConfirmYes() {
+  const action = pendingConfirmAction;
+  hideConfirm();
+  pauseOverlay.classList.add('hidden');
+  isPaused = false;
+  
+  if (action === 'restart') {
+    initGameWithCountdown();
+  } else if (action === 'quit') {
+    isGameOver = true;
+    startOverlay.classList.remove('hidden');
+    updateUIVisibility(false, false);
+    renderRankingList();
+  }
+}
+
+function updateUIVisibility(inGame, paused) {
+  if (inGame) {
+    headerBottomRow.classList.remove('hidden');
+  } else {
+    headerBottomRow.classList.add('hidden');
+    nextBtn.classList.add('hidden');
+  }
+}
+
+function updateNextButtonState() {
+  if (isGameOver) return;
+  const remaining = currentNodes.filter(n => n.mutatedSide !== null && !n.isCut).length;
+  if (remaining === 0) {
+    nextBtn.classList.remove('hidden');
+    nextBtn.classList.add('btn-ready');
+  } else {
+    nextBtn.classList.remove('hidden');
+    nextBtn.classList.remove('btn-ready');
+  }
+}
+
+function endGame(isClear) {
+  stopTimer();
+  stopCountdown();
+  isGameOver = true;
+  isPaused = false;
+  updateUIVisibility(false, false);
+
+  let rankBannerHtml = '';
+
+  if (isClear) {
+    const timeBonus = Math.floor(timeLeft * 10);
+    const baseScore = score;
+    score += timeBonus;
+    scoreEl.textContent = score;
+
+    const rankResult = recordScoreIfTop3(currentDifficulty, score, timeLeft);
+    if (rankResult.isRankIn) {
+      const rankBadges = ['🥇 1位', '🥈 2位', '🥉 3位'];
+      rankBannerHtml = `<div class="rank-in-banner">🎉 TOP 3 ランクイン！ (${rankBadges[rankResult.rankIndex]})</div>`;
+    }
+
+    resultTitle.textContent = "🎉 GAME CLEAR!";
+    resultTitle.style.color = "var(--accent-green)";
+    resultDetail.innerHTML = `
+      ${rankBannerHtml}
+      <div>全10問クリア！ [${diffTag.textContent}]</div>
+      <div style="font-size: 1.2rem; font-weight: bold; color: var(--accent-color); margin: 4px 0;">最終スコア: ${score} pt</div>
+      <div style="font-size: 0.8rem; color: var(--text-muted);">(基本: ${baseScore} pt + タイムボーナス: ${timeBonus} pt [残り${timeLeft.toFixed(1)}秒])</div>
+    `;
+  } else {
+    if (score > 0) {
+      const rankResult = recordScoreIfTop3(currentDifficulty, score, 0);
+      if (rankResult.isRankIn) {
+        const rankBadges = ['🥇 1位', '🥈 2位', '🥉 3位'];
+        rankBannerHtml = `<div class="rank-in-banner">🎉 TOP 3 ランクイン！ (${rankBadges[rankResult.rankIndex]})</div>`;
+      }
+    }
+
+    resultTitle.textContent = "⏱️ TIME UP!";
+    resultTitle.style.color = "var(--accent-red)";
+    resultDetail.innerHTML = `
+      ${rankBannerHtml}
+      <div>時間切れ！ 到達: ${currentGenomeIndex} / ${TOTAL_GENOMES} 本目</div>
+      <div style="font-size: 1.2rem; font-weight: bold; color: var(--accent-red); margin: 4px 0;">スコア: ${score} pt</div>
+    `;
+  }
+
+  resultOverlay.classList.remove('hidden');
+}
+
+function generateGenome() {
+  currentNodes = [];
+  highlightUncut = false;
+  const count = 6;
+  const startY = 70;
+  const spacing = (canvas.height - 120) / (count - 1);
+
+  if (currentDifficulty === 'hard' || currentDifficulty === 'extra') {
+    parentStrandSide = Math.random() < 0.5 ? 'left' : 'right';
+  }
+
+  // --- 変異インデックスの選定 ---
+  let mutIndex1 = Math.floor(Math.random() * count);
+  let mutIndex2 = Math.floor(Math.random() * count);
+
+  // extra モードかつ 25% の確率でピリミジンダイマー (隣り合う2箇所に変異を設定)
+  const isDimerGroup = (currentDifficulty === 'extra' && Math.random() < 0.25);
+
+  if (isDimerGroup) {
+    // 末尾(count-1) の場合はひとつ前とペアにする
+    if (mutIndex1 === count - 1) {
+      mutIndex2 = mutIndex1 - 1;
+    } else {
+      mutIndex2 = mutIndex1 + 1;
+    }
+  } else {
+    // 通常は重複しない2箇所をランダム選定
+    while (mutIndex2 === mutIndex1) {
+      mutIndex2 = Math.floor(Math.random() * count);
+    }
+  }
+
+  const daughterSide = parentStrandSide === 'left' ? 'right' : 'left';
+
+  // --- ゲノム生成ループ ---
+  for (let i = 0; i < count; i++) {
+    const y = startY + i * spacing;
+    const isMutated = (i === mutIndex1 || i === mutIndex2);
+
+    // ① 正常塩基ペア
+    if (!isMutated) {
+      const isAT = Math.random() < 0.5;
+      const flip = Math.random() < 0.5;
+      let left = isAT ? 'A' : 'C';
+      let right = COMPLEMENT[left];
+      if (flip) {
+        const tmp = left; left = right; right = tmp;
+      }
+      currentNodes.push({
+        id: i,
+        leftBase: left,
+        rightBase: right,
+        mutatedSide: null,
+        y: y,
+        isCut: false
+      });
+
+    // ② 変異塩基ペア
+    } else {
+      let mutData = {};
+
+      if (currentDifficulty === 'easy') {
+        mutData = MUTATION_GENERATORS.easyAInCG();
+
+      } else if (currentDifficulty === 'medium') {
+        mutData = MUTATION_GENERATORS.randomATCGMismatch();
+
+      } else if (currentDifficulty === 'hard') {
+        const isDeamination = Math.random() < 0.5;
+        if (isDeamination) {
+          mutData = MUTATION_GENERATORS.deaminationUracil(daughterSide);
+        } else {
+          mutData = MUTATION_GENERATORS.randomATCGMismatch();
+          if (mutData.mutatedSide !== daughterSide) {
+            const tmp = mutData.leftBase;
+            mutData.leftBase = mutData.rightBase;
+            mutData.rightBase = tmp;
+            mutData.mutatedSide = daughterSide;
+          }
+        }
+
+      } else { // extra モード
+        if (isDimerGroup) {
+          // ピリミジンダイマー (D)
+          const parentBase = Math.random() < 0.5 ? 'A' : 'G';
+          const partnerIndex = (i === mutIndex1) ? mutIndex2 : mutIndex1;
+
+          mutData = {
+            leftBase: daughterSide === 'left' ? 'D' : parentBase,
+            rightBase: daughterSide === 'right' ? 'D' : parentBase,
+            mutatedSide: daughterSide,
+            dimerPairIndex: partnerIndex
+          };
+        } else {
+          // その他の単一変異 (U, 8-OHdG, AP, 7-MeG, 3-MeA, O6-MeG, ミスマッチ)
+          const subRand = Math.random();
+          if (subRand < 0.15) {
+            mutData = MUTATION_GENERATORS.deaminationUracil(daughterSide);
+          } else if (subRand < 0.30) {
+            mutData = MUTATION_GENERATORS.oxoG(daughterSide);
+          } else if (subRand < 0.45) {
+            mutData = MUTATION_GENERATORS.apSite(daughterSide);
+          } else if (subRand < 0.60) {
+            mutData = MUTATION_GENERATORS.methylatedG7(daughterSide);
+          } else if (subRand < 0.73) {
+            mutData = MUTATION_GENERATORS.methylatedA3(daughterSide);
+          } else if (subRand < 0.85) {
+            mutData = MUTATION_GENERATORS.methylatedO6G(daughterSide);
+          } else {
+            mutData = MUTATION_GENERATORS.randomATCGMismatch();
+            if (mutData.mutatedSide !== daughterSide) {
+              const tmp = mutData.leftBase;
+              mutData.leftBase = mutData.rightBase;
+              mutData.rightBase = tmp;
+              mutData.mutatedSide = daughterSide;
+            }
+          }
+        }
+
+      }
+
+      currentNodes.push({
+        id: i,
+        leftBase: mutData.leftBase,
+        rightBase: mutData.rightBase,
+        mutatedSide: mutData.mutatedSide,
+        dimerPairIndex: mutData.dimerPairIndex !== undefined ? mutData.dimerPairIndex : null,
+        y: y,
+        isCut: false
+      });
+    }
+  }
+}
+
+
+function render() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const centerX = canvas.width / 2;
+  const strandOffset = 110;
+
+  if (currentDifficulty === 'hard' || currentDifficulty === 'extra') {
+    ctx.save();
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    
+    if (parentStrandSide === 'left') {
+      ctx.fillStyle = '#b45309';
+      ctx.fillText('[CH₃ 親鎖]', centerX - strandOffset, 20);
+      ctx.fillStyle = '#64748b';
+      ctx.fillText('[娘鎖]', centerX + strandOffset, 20);
+    } else {
+      ctx.fillStyle = '#64748b';
+      ctx.fillText('[娘鎖]', centerX - strandOffset, 20);
+      ctx.fillStyle = '#b45309';
+      ctx.fillText('[CH₃ 親鎖]', centerX + strandOffset, 20);
+    }
+    ctx.restore();
+  }
+
+  // DNA 骨格
+  ctx.beginPath();
+  ctx.moveTo(centerX - strandOffset, 30);
+  ctx.lineTo(centerX - strandOffset, canvas.height - 20);
+  ctx.moveTo(centerX + strandOffset, 30);
+  ctx.lineTo(centerX + strandOffset, canvas.height - 20);
+  ctx.strokeStyle = '#cbd5e1';
+  ctx.lineWidth = 6;
+  ctx.stroke();
+
+  // メチル化マーカー (CH3)
+  if (currentDifficulty === 'hard' || currentDifficulty === 'extra') {
+    const parentX = parentStrandSide === 'left' ? centerX - strandOffset : centerX + strandOffset;
+    currentNodes.forEach(node => {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(parentX, node.y, 7, 0, Math.PI * 2);
+      ctx.fillStyle = '#f59e0b';
+      ctx.fill();
+      ctx.strokeStyle = '#b45309';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 7px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('CH₃', parentX, node.y);
+      ctx.restore();
+    });
+  }
+
+  currentNodes.forEach(node => {
+    drawBasePairNode(node, centerX, strandOffset);
+  });
+
+  // 塩基の上に重ねてダイマー架橋線を描画
+  drawDimerBridges();
+
+  currentNodes.forEach(node => {
+    drawBasePairNode(node, centerX, strandOffset);
+  });
+
+  if (swipePath.length > 1) {
+    ctx.beginPath();
+    ctx.moveTo(swipePath[0].x, swipePath[0].y);
+    for (let i = 1; i < swipePath.length; i++) {
+      ctx.lineTo(swipePath[i].x, swipePath[i].y);
+    }
+    ctx.strokeStyle = '#dc2626';
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+  }
+}
+
+function drawBasePairNode(node, centerX, offset) {
+  const nodeY = node.y;
+
+  let leftBase = node.leftBase;
+  let rightBase = node.rightBase;
+
+  if (node.isCut) {
+    if (node.mutatedSide === 'left') {
+      leftBase = COMPLEMENT[rightBase];
+    } else if (node.mutatedSide === 'right') {
+      rightBase = COMPLEMENT[leftBase];
+    }
+  }
+
+  const isHardOrExtra = (currentDifficulty === 'hard' || currentDifficulty === 'extra');
+  const isLeftMutated = (!isHardOrExtra && node.mutatedSide === 'left');
+  const isRightMutated = (!isHardOrExtra && node.mutatedSide === 'right');
+
+  drawSingleBaseShape(centerX, nodeY, offset, true, leftBase, isLeftMutated, node.isCut, highlightUncut && node.mutatedSide !== null, rightBase);
+  drawSingleBaseShape(centerX, nodeY, offset, false, rightBase, isRightMutated, node.isCut, highlightUncut && node.mutatedSide !== null, leftBase);
+
+  if (node.isCut || node.mutatedSide === null) {
+    const bondCount = (leftBase === 'A' || leftBase === 'T' || leftBase === 'U' || leftBase === '8-OHdG' || leftBase === 'D' || leftBase === '3-MeA') ? 2 : 3;
+    drawHydrogenBonds(centerX, nodeY, bondCount, false);
+  } else {
+    // ミスマッチ変異未切断時：全難易度共通で2本線で表示
+    drawHydrogenBonds(centerX, nodeY, 2, true);
+  }
+
+  if (node.isCut) {
+    ctx.save();
+    ctx.fillStyle = '#16a34a';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('✓ 修復済', centerX, nodeY - 18);
+    ctx.restore();
+  }
+}
+
+/* 隣り合うピリミジンダイマー (D) 同士を結ぶ架橋線（シクロブタン環）の描画 */
+function drawDimerBridges() {
+  const centerX = canvas.width / 2;
+  const strandOffset = 110;
+  const nodeHeight = 26; // drawSingleBaseShape 内の塩基パーツの高さ
+
+  for (let i = 0; i < currentNodes.length; i++) {
+    const curr = currentNodes[i];
+
+    if (!curr || curr.isCut || curr.dimerPairIndex === null || curr.dimerPairIndex === undefined) {
+      continue;
+    }
+
+    if (i < curr.dimerPairIndex) {
+      const next = currentNodes[curr.dimerPairIndex];
+
+      if (next && !next.isCut) {
+        const isLeft = curr.mutatedSide === 'left';
+        
+        // 文字「D」の描画位置（+25px）から少し外側にずらして被りを防止
+        const bridgeX = isLeft ? centerX - strandOffset + 12 : centerX + strandOffset - 12;
+
+        // 【長さの調整】上のDの下端から、下のDの上端までをつなぐ
+        const startY = curr.y + nodeHeight / 2;
+        const endY = next.y - nodeHeight / 2;
+
+        ctx.save();
+
+        // ① 2つの D 塩基の「隙間」を結ぶ架橋ライン
+        ctx.beginPath();
+        ctx.strokeStyle = '#07dbc5'; // Dと同じ青緑色
+        ctx.lineWidth = 4;
+        ctx.lineCap = 'round';
+        ctx.moveTo(bridgeX, startY);
+        ctx.lineTo(bridgeX, endY);
+        ctx.stroke();
+
+        // ② 中央の結合ブロック（シクロブタン環イメージ）
+        const midY = (startY + endY) / 2;
+        ctx.fillStyle = '#07dbc5';
+        ctx.fillRect(bridgeX - 5, midY - 4, 10, 8);
+
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 1.2;
+        ctx.strokeRect(bridgeX - 5, midY - 4, 10, 8);
+
+        ctx.restore();
+      }
+    }
+  }
+}
+
+
+function drawSingleBaseShape(centerX, y, offset, isLeft, baseChar, isMutated, isCut, isHighlight, oppositeBase) {
+  const nodeHeight = 26;
+  const slant = 10;
+  const innerLeftX = centerX - 12;
+  const innerRightX = centerX + 12;
+
+  const isAP = (baseChar === 'AP');
+  const originalBase = baseChar;
+
+  if (isAP) {
+    baseChar = COMPLEMENT[oppositeBase] || 'T';
+  }
+
+  ctx.save();
+  ctx.fillStyle = BASE_COLORS[originalBase];
+
+  if (isMutated && !isCut) {
+    if (isHighlight) {
+      ctx.shadowColor = '#d97706';
+      ctx.shadowBlur = 22;
+    } else {
+      ctx.shadowColor = BASE_COLORS[originalBase];
+      ctx.shadowBlur = 16;
+    }
+  }
+
+  ctx.beginPath();
+  if (isLeft) {
+    const outerX = centerX - offset;
+    if (baseChar === 'A' || baseChar === '3-MeA') {
+      ctx.moveTo(outerX, y - nodeHeight/2);
+      ctx.lineTo(innerLeftX - slant, y - nodeHeight/2);
+      ctx.lineTo(innerLeftX + slant, y + nodeHeight/2);
+      ctx.lineTo(outerX, y + nodeHeight/2);
+    } else if (baseChar === 'T' || baseChar === 'U' || baseChar === 'D') {
+      ctx.moveTo(outerX, y - nodeHeight/2);
+      ctx.lineTo(innerLeftX + slant, y - nodeHeight/2);
+      ctx.lineTo(innerLeftX - slant, y + nodeHeight/2);
+      ctx.lineTo(outerX, y + nodeHeight/2);
+    } else if (baseChar === 'C') {
+      // C: 固定の凹 (Concave keyhole)
+      ctx.moveTo(outerX, y - nodeHeight/2);
+      ctx.lineTo(innerLeftX, y - nodeHeight/2);
+      ctx.lineTo(innerLeftX - 10, y);
+      ctx.lineTo(innerLeftX, y + nodeHeight/2);
+      ctx.lineTo(outerX, y + nodeHeight/2);
+    } else if (baseChar === 'G' || baseChar ==='8-OHdG' || baseChar === '7-MeG' || baseChar === 'O6-MeG') {
+      // G: 固定の凸 (Convex key)
+      ctx.moveTo(outerX, y - nodeHeight/2);
+      ctx.lineTo(innerLeftX, y - nodeHeight/2);
+      ctx.lineTo(innerLeftX + 10, y);
+      ctx.lineTo(innerLeftX, y + nodeHeight/2);
+      ctx.lineTo(outerX, y + nodeHeight/2);
+    }
+  } else {
+    const outerX = centerX + offset;
+    if (baseChar === 'A' || baseChar === '3-MeA') {
+      ctx.moveTo(innerRightX + slant, y - nodeHeight/2);
+      ctx.lineTo(outerX, y - nodeHeight/2);
+      ctx.lineTo(outerX, y + nodeHeight/2);
+      ctx.lineTo(innerRightX - slant, y + nodeHeight/2);
+    } else if (baseChar === 'T' || baseChar === 'U' || baseChar === 'D') {
+      ctx.moveTo(innerRightX - slant, y - nodeHeight/2);
+      ctx.lineTo(outerX, y - nodeHeight/2);
+      ctx.lineTo(outerX, y + nodeHeight/2);
+      ctx.lineTo(innerRightX + slant, y + nodeHeight/2);
+    } else if (baseChar === 'C') {
+      // C: 固定の凹 (Concave keyhole)
+      ctx.moveTo(outerX, y - nodeHeight/2);
+      ctx.lineTo(innerRightX, y - nodeHeight/2);
+      ctx.lineTo(innerRightX + 10, y);
+      ctx.lineTo(innerRightX, y + nodeHeight/2);
+      ctx.lineTo(outerX, y + nodeHeight/2);
+    } else if (baseChar === 'G' || baseChar ==='8-OHdG' || baseChar === '7-MeG' || baseChar === 'O6-MeG') {
+      // G: 固定の凸 (Convex key)
+      ctx.moveTo(outerX, y - nodeHeight/2);
+      ctx.lineTo(innerRightX, y - nodeHeight/2);
+      ctx.lineTo(innerRightX - 10, y);
+      ctx.lineTo(innerRightX, y + nodeHeight/2);
+      ctx.lineTo(outerX, y + nodeHeight/2);
+    }
+  }
+  ctx.closePath();
+  ctx.fill();
+
+  // 3. APサイトの場合は黒枠線（px）を描画
+  if (isAP) {
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 0.25;
+    ctx.stroke();
+  }
+
+  // 4. APサイト以外の場合のみ文字を描画（重複描画箇所を削除して1回のみに整理）
+  baseChar = isAP ? '' : originalBase;
+  if (baseChar !== '') {
+    // 8-OHdG および メチル化塩基は同じ位置 (+35 / -35) に配置
+    const isLongText = (baseChar === '8-OHdG' || baseChar === '7-MeG' || baseChar === '3-MeA' || baseChar === 'O6-MeG');
+    const textX = isLeft 
+      ? centerX - offset + (isLongText ? 35 : 25) 
+      : centerX + offset - (isLongText ? 35 : 25);
+    const textColor = BASE_TEXT_COLORS[baseChar] || '#ffffff';
+    drawText(baseChar, textX, y, textColor);
+  }
+
+  if (isMutated && !isCut) {
+    const badgeX = isLeft ? centerX - offset + 55 : centerX + offset - 55;
+    ctx.fillStyle = '#fef08a';
+    ctx.font = 'bold 10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('⚠️変異', badgeX, y);
+  }
+
+  ctx.restore();
+}
+
+function drawHydrogenBonds(centerX, y, count, isMismatch) {
+  ctx.save();
+  if (isMismatch) {
+    ctx.strokeStyle = '#dc2626';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([2, 4]);
+    const gap = 6;
+    const startY = y - ((count - 1) * gap) / 2;
+    for (let i = 0; i < count; i++) {
+      const lineY = startY + i * gap;
+      ctx.beginPath();
+      ctx.moveTo(centerX - 12, lineY);
+      ctx.lineTo(centerX + 12, lineY);
+      ctx.stroke();
+    }
+  } else {
+    ctx.strokeStyle = '#64748b';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([3, 3]);
+    const gap = 6;
+    const startY = y - ((count - 1) * gap) / 2;
+    for (let i = 0; i < count; i++) {
+      const lineY = startY + i * gap;
+      ctx.beginPath();
+      ctx.moveTo(centerX - 12, lineY);
+      ctx.lineTo(centerX + 12, lineY);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+function drawText(text, x, y, textColor = '#ffffff') {
+  ctx.fillStyle = textColor;
+  ctx.font = 'bold 13px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, x, y);
+}
+
+function getBaseSideRect(node, side, centerX, strandOffset) {
+  const nodeHeight = 32;
+  const yMin = node.y - nodeHeight / 2;
+  const yMax = node.y + nodeHeight / 2;
+
+  if (side === 'left') {
+    return { xMin: centerX - strandOffset - 10, xMax: centerX - 5, yMin, yMax };
+  } else {
+    return { xMin: centerX + 5, xMax: centerX + strandOffset + 10, yMin, yMax };
+  }
+}
+
+function isPointInRect(pt, rect) {
+  return pt.x >= rect.xMin && pt.x <= rect.xMax && pt.y >= rect.yMin && pt.y <= rect.yMax;
+}
+
+function lineIntersectsLine(p1, p2, p3, p4) {
+  const det = (p2.x - p1.x) * (p4.y - p3.y) - (p4.x - p3.x) * (p2.y - p1.y);
+  if (det === 0) return false;
+  const lambda = ((p4.y - p3.y) * (p4.x - p1.x) + (p3.x - p4.x) * (p4.y - p1.y)) / det;
+  const gamma = ((p1.y - p2.y) * (p4.x - p1.x) + (p2.x - p1.x) * (p4.y - p1.y)) / det;
+  return (0 <= lambda && lambda <= 1) && (0 <= gamma && gamma <= 1);
+}
+
+function checkIntersectionWithRect(p1, p2, rect) {
+  if (isPointInRect(p1, rect) || isPointInRect(p2, rect)) return true;
+
+  const rTL = { x: rect.xMin, y: rect.yMin };
+  const rTR = { x: rect.xMax, y: rect.yMin };
+  const rBL = { x: rect.xMin, y: rect.yMax };
+  const rBR = { x: rect.xMax, y: rect.yMax };
+
+  return lineIntersectsLine(p1, p2, rTL, rTR) ||
+         lineIntersectsLine(p1, p2, rTR, rBR) ||
+         lineIntersectsLine(p1, p2, rBR, rBL) ||
+         lineIntersectsLine(p1, p2, rBL, rTL);
+}
+
+function handlePointerDown(e) {
+  if (isGameOver || isPaused || isCountingDown) return;
+  isSwiping = true;
+  penalizedNodesThisSwipe.clear();
+
+  const rect = canvas.getBoundingClientRect();
+  const pt = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  swipePath = [pt];
+
+  processHit(pt, pt);
+}
+
+function handlePointerMove(e) {
+  if (!isSwiping || isGameOver || isPaused || isCountingDown) return;
+  const rect = canvas.getBoundingClientRect();
+  const currentPt = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  swipePath.push(currentPt);
+
+  if (swipePath.length > 5) swipePath.shift();
+
+  if (swipePath.length >= 2) {
+    const p1 = swipePath[swipePath.length - 2];
+    const p2 = swipePath[swipePath.length - 1];
+    processHit(p1, p2);
+  }
+}
+
+function processHit(p1, p2) {
+  const centerX = canvas.width / 2;
+  const strandOffset = 110;
+
+  currentNodes.forEach(node => {
+    if (node.mutatedSide !== null && !node.isCut) {
+      const correctRect = getBaseSideRect(node, node.mutatedSide, centerX, strandOffset);
+      if (checkIntersectionWithRect(p1, p2, correctRect)) {
+        node.isCut = true;
+        updateNextButtonState();
+        render();
+        return;
+      }
+
+      const oppositeSide = node.mutatedSide === 'left' ? 'right' : 'left';
+      const wrongRect = getBaseSideRect(node, oppositeSide, centerX, strandOffset);
+      if (checkIntersectionWithRect(p1, p2, wrongRect) && !penalizedNodesThisSwipe.has(node.id)) {
+        penalizedNodesThisSwipe.add(node.id);
+        timeLeft = Math.max(0, timeLeft - 1.0);
+        
+        if (currentDifficulty === 'hard' || currentDifficulty === 'extra') {
+          showToast('⚠️ 親鎖(CH₃)の正しい<br class="mobile-br"><span class="mobile-shift">塩基を誤切断！(-1.0秒)<span/>', false);
+        } else {
+          showToast('⚠️ 正常側の塩基への<br class="mobile-br"><span class="mobile-shift">誤切断(-1.0秒)<span/>', false);
+        }
+        updateTimerDisplay();
+      }
+    } else if (node.mutatedSide === null) {
+      const leftRect = getBaseSideRect(node, 'left', centerX, strandOffset);
+      const rightRect = getBaseSideRect(node, 'right', centerX, strandOffset);
+
+      if ((checkIntersectionWithRect(p1, p2, leftRect) || checkIntersectionWithRect(p1, p2, rightRect)) && !penalizedNodesThisSwipe.has(node.id)) {
+        penalizedNodesThisSwipe.add(node.id);
+        timeLeft = Math.max(0, timeLeft - 1.0);
+        showToast('⚠️ 正常塩基対への<br class="mobile-br"><span class="mobile-shift">誤切断(-1.0秒)<span/>', false);
+        updateTimerDisplay();
+      }
+    }
+  });
+}
+
+function handlePointerUp() {
+  isSwiping = false;
+  swipePath = [];
+  penalizedNodesThisSwipe.clear();
+  render();
+}
+
+canvas.addEventListener('mousedown', handlePointerDown);
+canvas.addEventListener('mousemove', handlePointerMove);
+window.addEventListener('mouseup', handlePointerUp);
+
+canvas.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  handlePointerDown(e.touches[0]);
+});
+canvas.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  handlePointerMove(e.touches[0]);
+});
+window.addEventListener('touchend', handlePointerUp);
+
+function showToast(msg, isSuccess) {
+  toast.innerHTML = msg;
+  toast.className = `message-toast ${isSuccess ? 'toast-success' : 'toast-error'}`;
+  toast.style.display = 'block';
+  instructionText.style.display = 'none';
+
+  if (toastTimeout) clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(() => {
+    toast.style.display = 'none';
+    instructionText.style.display = 'block';
+  }, 2200);
+}
+
+function handleNextGenome() {
+  if (isGameOver || isPaused || isCountingDown) return;
+
+  const remainingMutations = currentNodes.filter(node => node.mutatedSide !== null && !node.isCut).length;
+
+  if (remainingMutations === 0) {
+    score += 100;
+    scoreEl.textContent = score;
+
+    if (currentGenomeIndex >= TOTAL_GENOMES) {
+      endGame(true);
+    } else {
+      showToast('🎉 修復完了！<br class="mobile-br"><span class="mobile-shift">次のゲノムへ進みます<span/>', true);
+      currentGenomeIndex++;
+      genomeCountEl.textContent = `${currentGenomeIndex} / ${TOTAL_GENOMES}`;
+      generateGenome();
+      updateNextButtonState();
+      render();
+    }
+  } else {
+    highlightUncut = true;
+    render();
+    if (currentDifficulty === 'hard' || currentDifficulty === 'extra') {
+      showToast(`⚠️ まだミスマッチの<br class="mobile-br"><span class="mobile-shift">塩基対が ${remainingMutations} 箇所<span/><br class="mobile-br"><span class="mobile-shift">残っています！<span/>`, false);
+    } else {
+      showToast(`⚠️ 変異塩基(⚠️)がまだ<br class="mobile-br"><span class="mobile-shift"> ${remainingMutations} 箇所残っています！<span/>`, false);
+    }
+  }
+}
+
+nextBtn.addEventListener('click', handleNextGenome);
+
+restartBtn.addEventListener('click', () => {
+  renderRankingList();
+  startOverlay.classList.remove('hidden');
+  resultOverlay.classList.add('hidden');
+});
+
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'Escape') {
+    const tipsOverlay = document.getElementById('tips-overlay');
+    if (tipsOverlay && !tipsOverlay.classList.contains('hidden')) {
+      closeTipsModal();
+      return;
+    }
+  }
+  if (e.code === 'Space' || e.code === 'Enter') {
+    if (!startOverlay.classList.contains('hidden')) return;
+    if (!pauseOverlay.classList.contains('hidden')) return;
+    if (!resultOverlay.classList.contains('hidden')) return;
+    e.preventDefault();
+    handleNextGenome();
+  } else if (e.code === 'Escape' || e.code === 'KeyP') {
+    if (!startOverlay.classList.contains('hidden')) return;
+    if (!resultOverlay.classList.contains('hidden')) return;
+    e.preventDefault();
+    if (isPaused) {
+      resumeGame();
+    } else {
+      pauseGame();
+    }
+  }
+});
+
+document.querySelectorAll('.tips-section summary').forEach(summary => {
+  summary.addEventListener('click', (e) => {
+    const selection = window.getSelection();
+    // テキストが選択されている（ハイライトされている）場合は開閉動作をキャンセル
+    if (selection && selection.toString().trim().length > 0) {
+      e.preventDefault();
+    }
+  });
+});
+
+resizeCanvas();
+renderRankingList();
+updateLegend('easy');
+</script>
+</body>
+</html>
